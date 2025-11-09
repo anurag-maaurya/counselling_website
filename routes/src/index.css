@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+@import "tailwindcss";
+
+html {
+  scroll-behavior: smooth;
+}
+@keyframes zoom {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+.animate-zoom {
+  animation: zoom 2s ease-in-out infinite;
+}
+
+
+
+@layer utilities {
+  @keyframes zoomInOut {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+  }
+
+  .animate-zoom-loop {
+    animation: zoomInOut 3s infinite ease-in-out;
+  }
+}
+/* Add this in your global CSS (index.css) */
+@keyframes zoom-loop {
+  0%, 25% {
+    transform: scale(1);
+    z-index: 0;
+  }
+  50% {
+    transform: scale(1.15); /* zoom in */
+    z-index: 10; /* bring to front */
+  }
+  75%, 100% {
+    transform: scale(1);
+    z-index: 0;
+  }
+}
+
+.animate-zoom-loop {
+  animation: zoom-loop 12s infinite;
+  animation-timing-function: ease-in-out;
+}

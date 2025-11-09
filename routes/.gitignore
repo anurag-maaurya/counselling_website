@@ -1,0 +1,47 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Dependency Folder
+node_modules
+
+# Build Output
+dist
+dist-ssr
+/build
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.local
+
+# 1. ENVIRONMENT VARIABLES (CRITICAL)
+####################################
+.env
+.env.local
+.env.*.local
+
+# 2. VERCEL / DEPLOYMENT FILES
+####################################
+.vercel/
+
+# 3. FRONTEND/VITE CACHE
+####################################
+.vite
+
+# 4. DATABASE / SERVER-GENERATED FILES
+####################################
+sessions/
+/tmp
