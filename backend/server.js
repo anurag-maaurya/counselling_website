@@ -1,34 +1,34 @@
 import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
-import studentRoutes from "./routes/studentRoutes.js";
 import dotenv from "dotenv";
+import studentRoutes from "./routes/studentRoutes.js";
 import { GoogleGenAI } from "@google/genai";
 
-// ✅ Initialize environment variables first
+// ✅ Load environment variables
 dotenv.config();
 
 const app = express();
 
-// ✅ Allow both local and deployed frontend origins
+// ✅ Enable CORS for both local and deployed frontend (no trailing slash)
 app.use(
   cors({
     origin: [
-      "https://stbg1.vercel.app/", // ✅ your live frontend on Vercel
-      "http://localhost:5173", // ✅ keep this for local testing
+      "https://stbg1.vercel.app", // your frontend on Vercel
+      "http://localhost:5173", // for local testing
     ],
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
   })
 );
 
-// ✅ Parse JSON requests
+// ✅ Parse incoming JSON
 app.use(express.json());
 
 // ✅ Initialize Gemini AI client
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-// --- 🧠 College Review AI Route ---
+// --- 🧠 AI College Review Route ---
 app.post("/api/gemini-college-review", async (req, res) => {
   const { prompt } = req.body;
 
@@ -59,20 +59,20 @@ app.post("/api/gemini-college-review", async (req, res) => {
   }
 });
 
-// ✅ Connect MongoDB (Atlas)
+// ✅ MongoDB Connection
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => console.log("✅ MongoDB Atlas Connected"))
   .catch((err) => console.error("❌ MongoDB Error:", err));
 
-// ✅ Student routes
+// ✅ Student Routes
 app.use("/api/students", studentRoutes);
 
-// ✅ Root test route
+// ✅ Test Root Route
 app.get("/", (req, res) => {
   res.send("Server working fine ✅");
 });
 
-// ✅ Start the server
+// ✅ Start Server (for Render / Railway / Localhost)
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));

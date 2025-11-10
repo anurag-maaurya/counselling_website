@@ -13,7 +13,7 @@ export default function MentorLogin() {
   const ADMIN_ID = "mentor123";
   const ADMIN_PASS = "admin@123";
 
-  // 🧠 State for student management
+  // 🧠 Student state
   const [students, setStudents] = useState([]);
   const [newStudent, setNewStudent] = useState({
     name: "",
@@ -24,7 +24,7 @@ export default function MentorLogin() {
   // 🧠 Fetch students (only when logged in)
   useEffect(() => {
     if (isLoggedIn) {
-      fetch("https://counselling-backend-neh6.onrender.com/api/students")
+      fetch("https://counselling-website-backend.vercel.app/api/students")
         .then((res) => res.json())
         .then((data) => setStudents(data))
         .catch((err) => console.error("Error fetching students:", err));
@@ -50,7 +50,7 @@ export default function MentorLogin() {
 
     try {
       const res = await fetch(
-        "https://counselling-backend-neh6.onrender.com/api/students",
+        "https://counselling-website-backend.vercel.app/api/students",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -72,12 +72,12 @@ export default function MentorLogin() {
     }
   };
 
-  // 🧹 Resolve student request (from context)
+  // 🧹 Resolve student request
   const handleResolve = (id) => {
     resolveRequest(id);
   };
 
-  // 💻 If not logged in, show login form
+  // 💻 Login page
   if (!isLoggedIn) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-neutral-900">
@@ -120,7 +120,7 @@ export default function MentorLogin() {
     );
   }
 
-  // 🧭 If logged in, show dashboard
+  // 🧭 Mentor dashboard
   return (
     <div className="p-8 space-y-10 bg-neutral-900 min-h-screen">
       <div className="flex justify-between items-center pb-4 border-b border-gray-700">
@@ -135,7 +135,7 @@ export default function MentorLogin() {
         </button>
       </div>
 
-      {/* 🧠 Section 1: Manage Students */}
+      {/* 🧠 Manage Students */}
       <section className="bg-neutral-800 p-6 rounded-xl shadow-2xl shadow-black/40 border border-gray-700">
         <h3 className="text-2xl font-semibold mb-6 text-white border-b border-gray-700 pb-2">
           Manage Students
@@ -234,7 +234,7 @@ export default function MentorLogin() {
         </div>
       </section>
 
-      {/* 📞 Section 2: Student Requests */}
+      {/* 📞 Student Requests */}
       <section className="bg-neutral-800 p-6 rounded-xl shadow-2xl shadow-black/40 border border-gray-700">
         <h3 className="text-2xl font-semibold mb-6 text-white border-b border-gray-700 pb-2">
           Pending Student Requests
