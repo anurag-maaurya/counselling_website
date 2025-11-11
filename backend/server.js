@@ -3,21 +3,22 @@ import mongoose from "mongoose";
 import cors from "cors";
 import dotenv from "dotenv";
 import studentRoutes from "./routes/studentRoutes.js";
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 // ✅ Load environment variables
 dotenv.config();
 
 const app = express();
 
-// ✅ Enable CORS for both local and deployed frontend (no trailing slash)
+// ✅ Enable CORS for all trusted origins (Safari, iPhone, Android supported)
 app.use(
   cors({
     origin: [
-      "https://stbg1.vercel.app", // your frontend on Vercel
-      "http://localhost:5173", // for local testing
+      "https://stbg1.vercel.app", // your deployed frontend
+      "http://localhost:5173",    // for local testing
     ],
-    methods: ["GET", "POST", "PUT", "DELETE"],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
   })
 );
@@ -26,53 +27,54 @@ app.use(
 app.use(express.json());
 
 // ✅ Initialize Gemini AI client
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-// --- 🧠 AI College Review Route ---
+// 🧠 AI College Review Route (Fixed version for cross-browser support)
 app.post("/api/gemini-college-review", async (req, res) => {
   const { prompt } = req.body;
 
-  if (!prompt) {
-    return res
-      .status(400)
-      .json({ message: "Prompt is required in the request body." });
+  if (!prompt || prompt.trim() === "") {
+    return res.status(400).json({ message: "Prompt is required." });
   }
 
-  const systemInstruction =
-    "Act as a professional college counselor specializing in Indian engineering admissions. Provide a concise, objective, and factual review of the institution. Focus on NIRF ranking (if available), top branches, placement statistics (average CTC), and location advantage. Format the output using clear headings and markdown.";
-
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt,
-      config: {
-        systemInstruction: systemInstruction,
-      },
+    const model = genAI.getGenerativeModel({
+      model: "gemini-1.5-flash",
+      systemInstruction: `
+        Act as a professional college counselor specializing in Indian engineering admissions. 
+        Provide a concise, factual, and objective review of the institution. 
+        Focus on NIRF ranking (if available), top branches, placement statistics (average CTC), 
+        and location advantage. Use clear headings and markdown format.
+      `,
     });
 
-    res.json({ text: response.text });
+    const result = await model.generateContent(prompt);
+    const text = result?.response?.text() || "No review generated.";
+
+    res.json({ text });
   } catch (error) {
-    console.error("Error calling Gemini API:", error);
-    res
-      .status(500)
-      .json({ message: "Failed to retrieve AI review. Check backend logs." });
+    console.error("❌ Gemini API Error:", error.message);
+    res.status(500).json({
+      message:
+        "Sorry, I couldn't fetch the review right now. Please try again later.",
+    });
   }
 });
 
-// ✅ MongoDB Connection
+// ✅ Student Routes (unchanged — DB works as before)
+app.use("/api/students", studentRoutes);
+
+// ✅ MongoDB Connection (unchanged)
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => console.log("✅ MongoDB Atlas Connected"))
   .catch((err) => console.error("❌ MongoDB Error:", err));
 
-// ✅ Student Routes
-app.use("/api/students", studentRoutes);
-
-// ✅ Test Root Route
+// ✅ Root route
 app.get("/", (req, res) => {
   res.send("Server working fine ✅");
 });
 
-// ✅ Start Server (for Render / Railway / Localhost)
+// ✅ Start server
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
