@@ -1,19 +1,15 @@
 import React, { useState, useEffect } from "react";
-import { useRequests } from "../context/RequestContext";
+
+// ✅ Define backend URL dynamically (use Vercel URL in production)
+const backendUrl =
+  import.meta.env.VITE_BACKEND_URL ||
+  "https://counselling-website-backend.vercel.app"; // default fallback
+
+const ADMIN_ID = "mentor123";
+const ADMIN_PASS = "admin@123";
 
 export default function MentorLogin() {
-  const { requests, resolveRequest } = useRequests();
-
-  // 🧠 Login state
-  const [mentorId, setMentorId] = useState("");
-  const [password, setPassword] = useState("");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-
-  // 🔐 Default credentials
-  const ADMIN_ID = "mentor123";
-  const ADMIN_PASS = "admin@123";
-
-  // 🧠 Student state
   const [students, setStudents] = useState([]);
   const [newStudent, setNewStudent] = useState({
     name: "",
@@ -24,145 +20,125 @@ export default function MentorLogin() {
   // 🧠 Fetch students (only when logged in)
   useEffect(() => {
     if (isLoggedIn) {
-      fetch("https://counselling-website-backend.vercel.app/api/students")
-        .then((res) => res.json())
-        .then((data) => setStudents(data))
+      fetch(`${backendUrl}/api/students`)
+        .then((res) => {
+          if (!res.ok) throw new Error("Failed to fetch students");
+          return res.json();
+        })
+        .then((data) => {
+          // ✅ ensure array type to avoid `.map` crash
+          if (Array.isArray(data)) setStudents(data);
+          else {
+            console.error("Invalid student data:", data);
+            setStudents([]);
+          }
+        })
         .catch((err) => console.error("Error fetching students:", err));
     }
   }, [isLoggedIn]);
 
-  // 🔐 Handle login
-  const handleLogin = () => {
-    if (mentorId === ADMIN_ID && password === ADMIN_PASS) {
-      alert("✅ Login successful!");
-      setIsLoggedIn(true);
-    } else {
-      alert("❌ Invalid Mentor ID or Password");
-    }
-  };
-
-  // ➕ Add new student
+  // 🧠 Add new student
   const handleAddStudent = async () => {
-    const { name, mobile, counselingType } = newStudent;
-    if (!name.trim() || !mobile.trim() || !counselingType.trim()) {
-      return alert("Please fill in Name, Mobile, and Counseling Type");
-    }
-
     try {
-      const res = await fetch(
-        "https://counselling-website-backend.vercel.app/api/students",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, mobile, counselingType }),
-        }
-      );
+      const res = await fetch(`${backendUrl}/api/students`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newStudent),
+      });
+
+      if (!res.ok) throw new Error("Failed to add student");
 
       const data = await res.json();
-
-      if (res.ok) {
-        setStudents((prev) => [data, ...prev]);
-        setNewStudent({ name: "", mobile: "", counselingType: "" });
-      } else {
-        alert("Error: " + data.message);
-      }
+      alert("✅ Student added successfully!");
+      setStudents((prev) => [...prev, data]);
+      setNewStudent({ name: "", mobile: "", counselingType: "" });
     } catch (err) {
       console.error("Error adding student:", err);
-      alert("Failed to connect to backend");
+      alert("❌ Failed to add student. Please check the console/logs.");
     }
   };
 
-  // 🧹 Resolve student request
-  const handleResolve = (id) => {
-    resolveRequest(id);
+  // 💻 Mentor login
+  const handleLogin = (id, pass) => {
+    if (id === ADMIN_ID && pass === ADMIN_PASS) {
+      setIsLoggedIn(true);
+    } else {
+      alert("Invalid credentials ❌");
+    }
   };
 
-  // 💻 Login page
+  // 💻 If not logged in, show login form
   if (!isLoggedIn) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-neutral-900">
-        <div className="bg-neutral-800 p-10 rounded-xl shadow-2xl shadow-black/50 w-96 border border-gray-700">
-          <h2 className="text-3xl font-bold text-orange-500 text-center mb-8">
-            🔐 Mentor Login
+        <div className="bg-neutral-800 p-10 rounded-2xl shadow-xl">
+          <h2 className="text-white text-3xl mb-6 font-semibold">
+            Mentor Login
           </h2>
-
-          <div className="space-y-4">
-            <input
-              type="text"
-              placeholder="Enter Mentor ID"
-              value={mentorId}
-              onChange={(e) => setMentorId(e.target.value)}
-              className="bg-neutral-900 border border-gray-700 text-gray-200 p-3 rounded-lg w-full focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition duration-200"
-            />
-
-            <input
-              type="password"
-              placeholder="Enter Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="bg-neutral-900 border border-gray-700 text-gray-200 p-3 rounded-lg w-full focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition duration-200"
-            />
-
-            <button
-              onClick={handleLogin}
-              className="bg-orange-600 text-white w-full py-3 rounded-lg hover:bg-orange-700 transition-all font-semibold shadow-lg mt-2"
-            >
-              LOGIN
-            </button>
-          </div>
-
-          <p className="text-sm text-gray-500 text-center mt-6">
-            Default ID: <b className="text-gray-300">mentor123</b> | Password:{" "}
-            <b className="text-gray-300">admin@123</b>
-          </p>
+          <input
+            type="text"
+            placeholder="Mentor ID"
+            className="block w-full p-3 mb-4 rounded bg-gray-700 text-white"
+            onChange={(e) => (window.mentorId = e.target.value)}
+          />
+          <input
+            type="password"
+            placeholder="Password"
+            className="block w-full p-3 mb-4 rounded bg-gray-700 text-white"
+            onChange={(e) => (window.mentorPass = e.target.value)}
+          />
+          <button
+            className="bg-blue-600 text-white px-5 py-2 rounded w-full"
+            onClick={() => handleLogin(window.mentorId, window.mentorPass)}
+          >
+            Login
+          </button>
         </div>
       </div>
     );
   }
 
-  // 🧭 Mentor dashboard
+  // 🧭 Mentor Dashboard
   return (
-    <div className="p-8 space-y-10 bg-neutral-900 min-h-screen">
+    <div className="p-8 space-y-10 bg-neutral-900 min-h-screen text-white">
       <div className="flex justify-between items-center pb-4 border-b border-gray-700">
-        <h2 className="text-3xl font-bold text-orange-500">
-          🎓 Mentor Dashboard
-        </h2>
+        <h1 className="text-3xl font-bold">Mentor Dashboard</h1>
         <button
           onClick={() => setIsLoggedIn(false)}
-          className="bg-gray-700 text-gray-300 px-4 py-2 rounded-lg hover:bg-gray-600 transition-all shadow-md"
+          className="bg-red-600 px-4 py-2 rounded"
         >
           Logout
         </button>
       </div>
 
       {/* 🧠 Manage Students */}
-      <section className="bg-neutral-800 p-6 rounded-xl shadow-2xl shadow-black/40 border border-gray-700">
-        <h3 className="text-2xl font-semibold mb-6 text-white border-b border-gray-700 pb-2">
+      <section className="bg-neutral-800 p-6 rounded-xl border border-gray-700 shadow-lg">
+        <h3 className="text-2xl font-semibold mb-6 border-b border-gray-700 pb-2">
           Manage Students
         </h3>
 
-        <div className="flex flex-wrap gap-4 mb-8">
+        <div className="mb-6">
           <input
             type="text"
-            placeholder="Enter student name"
+            placeholder="Name"
             value={newStudent.name}
             onChange={(e) =>
               setNewStudent({ ...newStudent, name: e.target.value })
             }
-            className="bg-neutral-900 border border-gray-700 text-gray-300 p-3 rounded-lg w-64 focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
+            className="p-2 m-2 rounded bg-gray-700"
           />
           <input
             type="text"
-            placeholder="Enter mobile number"
+            placeholder="Mobile"
             value={newStudent.mobile}
             onChange={(e) =>
               setNewStudent({ ...newStudent, mobile: e.target.value })
             }
-            className="bg-neutral-900 border border-gray-700 text-gray-300 p-3 rounded-lg w-64 focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
+            className="p-2 m-2 rounded bg-gray-700"
           />
           <input
             type="text"
-            placeholder="Enter counseling type"
+            placeholder="Counseling Type"
             value={newStudent.counselingType}
             onChange={(e) =>
               setNewStudent({
@@ -170,100 +146,29 @@ export default function MentorLogin() {
                 counselingType: e.target.value,
               })
             }
-            className="bg-neutral-900 border border-gray-700 text-gray-300 p-3 rounded-lg w-64 focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
+            className="p-2 m-2 rounded bg-gray-700"
           />
           <button
             onClick={handleAddStudent}
-            className="bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700 font-semibold shadow-md"
+            className="bg-green-600 p-2 rounded"
           >
-            ➕ Add Student
+            Add Student
           </button>
         </div>
 
-        <div className="overflow-auto max-h-96 border border-gray-700 rounded-lg">
-          <table className="w-full border-collapse text-sm text-gray-300">
-            <thead>
-              <tr className="bg-neutral-900 sticky top-0 shadow-md">
-                <th className="border-b border-gray-700 p-3 text-left text-orange-400">
-                  Name
-                </th>
-                <th className="border-b border-gray-700 p-3 text-left text-orange-400">
-                  Mobile
-                </th>
-                <th className="border-b border-gray-700 p-3 text-left text-orange-400">
-                  Counseling Type
-                </th>
-                <th className="border-b border-gray-700 p-3 text-left text-orange-400">
-                  Added On
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {students.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan="4"
-                    className="text-center p-4 text-gray-500 bg-neutral-800"
-                  >
-                    No students added yet
-                  </td>
-                </tr>
-              ) : (
-                students.map((s) => (
-                  <tr
-                    key={s._id}
-                    className="even:bg-neutral-900 hover:bg-neutral-700 transition duration-150"
-                  >
-                    <td className="border-r border-gray-800 p-3 text-white">
-                      {s.name}
-                    </td>
-                    <td className="border-r border-gray-800 p-3">
-                      {s.mobile}
-                    </td>
-                    <td className="border-r border-gray-800 p-3 text-orange-400">
-                      {s.counselingType}
-                    </td>
-                    <td className="p-3 text-gray-500">
-                      {new Date(s.createdAt).toLocaleString()}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      {/* 📞 Student Requests */}
-      <section className="bg-neutral-800 p-6 rounded-xl shadow-2xl shadow-black/40 border border-gray-700">
-        <h3 className="text-2xl font-semibold mb-6 text-white border-b border-gray-700 pb-2">
-          Pending Student Requests
-        </h3>
-
-        {requests.length === 0 ? (
-          <p className="text-gray-500">No pending requests</p>
+        {/* Students list */}
+        {students.length === 0 ? (
+          <p className="text-gray-400">No students found.</p>
         ) : (
-          <div className="space-y-4">
-            {requests.map((req) => (
+          <div className="space-y-3">
+            {students.map((student) => (
               <div
-                key={req.id}
-                className="bg-neutral-900 border border-gray-700 rounded-lg p-4 shadow-lg flex justify-between items-center hover:bg-neutral-700 transition duration-200"
+                key={student._id}
+                className="bg-gray-700 p-3 rounded flex justify-between items-center"
               >
-                <div>
-                  <p className="font-medium text-white mb-1">
-                    {req.name}{" "}
-                    <span className="text-orange-500 text-xs ml-2 uppercase">
-                      ({req.type})
-                    </span>
-                  </p>
-                  <p className="text-sm text-gray-400 italic">{req.message}</p>
-                </div>
-                <button
-                  onClick={() => handleResolve(req.id)}
-                  className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 font-semibold transition-all"
-                >
-                  Resolve
-                </button>
+                <span>
+                  <strong>{student.name}</strong> — {student.counselingType}
+                </span>
               </div>
             ))}
           </div>
