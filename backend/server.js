@@ -2,11 +2,16 @@ import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
 import dotenv from "dotenv";
+import { GoogleGenAI } from "@google/genai"; // ✅ NEW: Import the Google GenAI SDK
 import studentRoutes from "./routes/studentRoutes.js";
 
 dotenv.config();
 
 const app = express();
+
+// ✅ Initialize the Gemini Client with the API Key
+// This should be done once outside the route handler
+const ai = new GoogleGenAI(process.env.GEMINI_API_KEY); 
 
 // ✅ CORS setup (fix for all browsers + production)
 app.use(
@@ -22,7 +27,7 @@ app.use(
 
 app.use(express.json());
 
-// 🧠 Gemini Route — uses fetch (not SDK)
+// 🧠 Gemini Route — UPDATED to use Node.js SDK for reliability
 app.post("/api/gemini-college-review", async (req, res) => {
   const { prompt } = req.body;
 
@@ -31,37 +36,37 @@ app.post("/api/gemini-college-review", async (req, res) => {
   }
 
   try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                {
-                  text: `Act as a college counselor for Indian engineering colleges. Provide an objective review in markdown format with sections like Ranking, Courses, Placements, Location. College: ${prompt}`,
-                },
-              ],
-            },
-          ],
-        }),
+    // Define the system instruction separately for better control
+    const systemInstruction = "Act as a college counselor for Indian engineering colleges. Provide an objective review in markdown format with sections like Ranking, Courses, Placements, Location.";
+    
+    // 💡 Use the SDK's generateContent method
+    const response = await ai.models.generateContent({
+      model: "gemini-1.5-flash", // Using the model you specified
+      contents: [
+        {
+          role: "user",
+          parts: [{ text: `College: ${prompt}` }], // The user's query
+        },
+      ],
+      config: {
+        systemInstruction: systemInstruction,
+        // Using Google Search grounding tool to ensure factual results
+        tools: [{ "google_search": {} }], 
       }
-    );
+    });
 
-    const data = await response.json();
-
-    const text =
-      data?.candidates?.[0]?.content?.parts?.[0]?.text ||
-      "Sorry, I couldn't fetch the review right now. Please try again later or refine your college name.";
+    // Extract the text safely from the SDK response
+    const text = 
+      response?.text || 
+      "Sorry, I couldn't fetch the review right now. The API might be facing an issue. Please try again later or refine your college name.";
 
     res.json({ text });
   } catch (error) {
-    console.error("❌ Gemini API Error:", error);
+    // Log the error for server-side debugging
+    console.error("❌ Gemini API Error (Using SDK):", error); 
     res.status(500).json({
       message:
-        "Sorry, I couldn't fetch the review right now. Please try again later or refine your college name.",
+        "An unexpected server error occurred while fetching the review. Please check your API key and server logs.",
     });
   }
 });
