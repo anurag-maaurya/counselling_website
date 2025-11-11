@@ -7,102 +7,79 @@ import studentRoutes from "./routes/studentRoutes.js";
 dotenv.config();
 const app = express();
 
-app.use(express.json());
-
-// ✅ CORS — no change (works for all browsers)
+// ✅ CORS setup
 app.use(
   cors({
     origin: [
-      "https://stbg1.vercel.app", // frontend deployed
-      "http://localhost:5173",    // local dev
+      "https://stbg1.vercel.app", // frontend
+      "http://localhost:5173", // local dev
     ],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
-// 🧠 Gemini Route — minimal, safe update
+app.use(express.json());
+
+// ✅ MongoDB Connection (DO NOT TOUCH)
+mongoose
+  .connect(process.env.MONGO_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
+  .then(() => console.log("✅ MongoDB Connected Successfully"))
+  .catch((err) => console.error("❌ MongoDB Connection Error:", err.message));
+
+// ✅ Student Routes
+app.use("/api/students", studentRoutes);
+
+// ✅ Gemini Route (fully isolated)
 app.post("/api/gemini-college-review", async (req, res) => {
   const { prompt } = req.body;
 
-  if (!prompt || prompt.trim() === "") {
-    return res.status(400).json({ message: "Prompt is required." });
-  }
+  if (!prompt) return res.status(400).json({ message: "Prompt required" });
 
   try {
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
-
-    const response = await fetch(apiUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json", // ✅ helps Safari
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              {
-                text: `Act as a college counselor for Indian engineering colleges.
-Provide an objective and helpful review in markdown format with sections like Ranking, Courses, Placements, and Location.
-College: ${prompt}`,
-              },
-            ],
-          },
-        ],
-      }),
-    });
-
-    const data = await response.json();
-
-    // ✅ Defensive check for invalid Gemini response
-    if (!response.ok || !data?.candidates) {
-      console.error("Gemini API error:", data);
-      return res.status(500).json({
-        message: "Gemini API error — please try again later.",
-      });
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      console.error("Gemini API Key missing!");
+      return res.status(500).json({ message: "Missing Gemini API Key" });
     }
 
+    const r = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                {
+                  text: `Give a short structured review (Ranking, Courses, Placements, Location) for the Indian college: ${prompt}`,
+                },
+              ],
+            },
+          ],
+        }),
+      }
+    );
+
+    const data = await r.json();
+
     const text =
-      data.candidates?.[0]?.content?.parts?.[0]?.text ||
-      "Sorry, I couldn't fetch the review right now. Please try again later or refine your college name.";
+      data?.candidates?.[0]?.content?.parts?.[0]?.text ||
+      "Sorry, no response from Gemini API.";
 
     res.json({ text });
-  } catch (error) {
-    console.error("❌ Gemini API Error:", error);
-    res.status(500).json({
-      message:
-        "Sorry, I couldn't fetch the review right now. Please try again later or refine your college name.",
-    });
+  } catch (err) {
+    console.error("Gemini Error:", err.message);
+    res.status(500).json({ message: "Server Error" });
   }
 });
 
+// ✅ Health check
+app.get("/", (req, res) => res.send("Server up ✅"));
 
-app.get("/api/test-db", async (req, res) => {
-  try {
-    const admin = await mongoose.connection.db.admin().ping();
-    res.json({ message: "✅ MongoDB Connected on Vercel", admin });
-  } catch (error) {
-    console.error("DB test failed:", error);
-    res.status(500).json({ message: "❌ MongoDB not connected", error });
-  }
-});
-
-
-// ✅ MongoDB Connection — SAME as before
-mongoose
-  .connect(process.env.MONGO_URI)
-  .then(() => console.log("✅ MongoDB Atlas Connected"))
-  .catch((err) => console.error("❌ MongoDB Error:", err));
-
-// ✅ Student Routes — SAME
-app.use("/api/students", studentRoutes);
-
-// ✅ Root route — SAME
-app.get("/", (req, res) => {
-  res.send("Server working fine ✅");
-});
-
-// ✅ Start server — SAME
 const PORT = process.env.PORT || 5001;
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Backend running on ${PORT}`));
