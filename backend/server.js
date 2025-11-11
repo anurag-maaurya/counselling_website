@@ -77,6 +77,18 @@ College: ${prompt}`,
   }
 });
 
+
+app.get("/api/test-db", async (req, res) => {
+  try {
+    const admin = await mongoose.connection.db.admin().ping();
+    res.json({ message: "✅ MongoDB Connected on Vercel", admin });
+  } catch (error) {
+    console.error("DB test failed:", error);
+    res.status(500).json({ message: "❌ MongoDB not connected", error });
+  }
+});
+
+
 // ✅ MongoDB Connection — SAME as before
 mongoose
   .connect(process.env.MONGO_URI)
