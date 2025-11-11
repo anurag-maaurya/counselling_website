@@ -3,18 +3,16 @@ import mongoose from "mongoose";
 import cors from "cors";
 import dotenv from "dotenv";
 import studentRoutes from "./routes/studentRoutes.js";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 
-// ✅ Load environment variables
 dotenv.config();
 
 const app = express();
 
-// ✅ Enable CORS for all trusted origins (Safari, iPhone, Android supported)
+// ✅ CORS setup (works for Chrome, Safari, mobile)
 app.use(
   cors({
     origin: [
-      "https://stbg1.vercel.app", // your deployed frontend
+      "https://stbg1.vercel.app", // frontend deployed domain
       "http://localhost:5173",    // for local testing
     ],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -23,13 +21,9 @@ app.use(
   })
 );
 
-// ✅ Parse incoming JSON
 app.use(express.json());
 
-// ✅ Initialize Gemini AI client
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-
-// 🧠 AI College Review Route (Fixed version for cross-browser support)
+// 🧠 Gemini Route — uses fetch (not SDK)
 app.post("/api/gemini-college-review", async (req, res) => {
   const { prompt } = req.body;
 
@@ -38,37 +32,52 @@ app.post("/api/gemini-college-review", async (req, res) => {
   }
 
   try {
-    const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
-      systemInstruction: `
-        Act as a professional college counselor specializing in Indian engineering admissions. 
-        Provide a concise, factual, and objective review of the institution. 
-        Focus on NIRF ranking (if available), top branches, placement statistics (average CTC), 
-        and location advantage. Use clear headings and markdown format.
-      `,
-    });
+    const response = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" +
+        process.env.GEMINI_API_KEY,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                {
+                  text: `Act as a college counselor for Indian engineering colleges. Provide an objective review in markdown format with sections like Ranking, Courses, Placements, Location. College: ${prompt}`,
+                },
+              ],
+            },
+          ],
+        }),
+      }
+    );
 
-    const result = await model.generateContent(prompt);
-    const text = result?.response?.text() || "No review generated.";
+    const data = await response.json();
+
+    const text =
+      data?.candidates?.[0]?.content?.parts?.[0]?.text ||
+      "Sorry, I couldn't fetch the review right now. Please try again later or refine your college name.";
 
     res.json({ text });
   } catch (error) {
-    console.error("❌ Gemini API Error:", error.message);
+    console.error("❌ Gemini API Error:", error);
     res.status(500).json({
       message:
-        "Sorry, I couldn't fetch the review right now. Please try again later.",
+        "Sorry, I couldn't fetch the review right now. Please try again later or refine your college name.",
     });
   }
 });
-
-// ✅ Student Routes (unchanged — DB works as before)
-app.use("/api/students", studentRoutes);
 
 // ✅ MongoDB Connection (unchanged)
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => console.log("✅ MongoDB Atlas Connected"))
   .catch((err) => console.error("❌ MongoDB Error:", err));
+
+// ✅ Routes
+app.use("/api/students", studentRoutes);
 
 // ✅ Root route
 app.get("/", (req, res) => {
