@@ -1,87 +1,127 @@
-import React, { useState, useCallback } from 'react';
-// This component correctly uses fetch to communicate with your backend API,
-// avoiding direct import of server-only modules like 'express' or 'mongoose'.
+import React, { useState } from 'react';
+
+// Tailwind CSS classes for the old UI: Dark card, orange button, and powered by text
+const primaryColor = 'text-orange-500';
+const buttonBg = 'bg-orange-600 hover:bg-orange-700';
+const cardBg = 'bg-gray-800';
+const inputStyle = 'bg-gray-700 text-white placeholder-gray-400 border-gray-600';
+const resultBg = 'bg-gray-900 border border-gray-700';
 
 const CollegeReviewAI = () => {
-  const [collegeName, setCollegeName] = useState('');
+  const [prompt, setPrompt] = useState('');
   const [review, setReview] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Function to call the Express backend API
-  const getReview = useCallback(async () => {
-    if (!collegeName) {
-      setError("Please enter a college name.");
+  const fetchReview = async () => {
+    if (!prompt.trim()) {
+      setError('Please enter a college name.');
       return;
     }
 
     setLoading(true);
-    setReview('');
     setError('');
+    setReview('');
 
+    // --- Core API Logic (Calls the Express Backend) ---
     try {
-      // 💡 Hitting the Express server API endpoint
-      // Ensure this URL is correct for your deployed backend
-      const response = await fetch('https://stbg1.vercel.app/api/gemini-college-review', {
+      // NOTE: This URL should point to your Vercel-deployed server's API endpoint
+      const response = await fetch('/api/gemini-college-review', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ prompt: collegeName }), // Sending the prompt to the backend
+        body: JSON.stringify({ prompt }),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        // Handle server-side errors (from your Express route)
-        throw new Error(data.message || 'Failed to fetch review from the server.');
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      setReview(data.text);
+      const data = await response.json();
+      
+      if (data.text) {
+          // Use 'text' from the response as the review content
+          setReview(data.text); 
+      } else {
+          // Handle cases where the response is missing the 'text' property
+          setReview("Sorry, I couldn't fetch the review right now. The response was empty.");
+      }
 
     } catch (err) {
-      console.error("Frontend Fetch Error:", err);
-      // Display a user-friendly error message
-      setError(err.message || "Could not connect to the review service.");
+      console.error("Fetch Error:", err);
+      setError('Sorry, I couldn\'t fetch the review right now. Please check your network or server logs.');
+      setReview('Sorry, I couldn\'t fetch the review right now. Please try again later or refine your college name.');
     } finally {
       setLoading(false);
     }
-  }, [collegeName]);
-
+  };
 
   return (
-    <div className="p-4 max-w-2xl mx-auto bg-white shadow-xl rounded-xl">
-      <h2 className="text-2xl font-bold mb-4 text-indigo-700">College Review AI</h2>
-      
-      <input
-        type="text"
-        placeholder="Enter College Name (e.g., IIT Delhi)"
-        value={collegeName}
-        onChange={(e) => setCollegeName(e.target.value)}
-        className="w-full p-3 mb-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-        disabled={loading}
-      />
+    <div className="flex flex-col items-center justify-center p-4">
+      {/* Card Container - Dark Background */}
+      <div className={`${cardBg} shadow-2xl rounded-xl p-8 w-full max-w-2xl text-white`}>
+        <h1 className="text-3xl font-bold text-center mb-1">
+          College Review AI
+        </h1>
+        <p className={`text-center mb-6 text-sm font-semibold ${primaryColor}`}>
+          Powered by Gemini
+        </p>
+        <p className="text-gray-400 text-center mb-6">
+          Get instant, factual reviews on any Indian engineering college's ranking, placements, and top branches.
+        </p>
 
-      <button
-        onClick={getReview}
-        disabled={loading || !collegeName}
-        className="w-full bg-indigo-600 text-white font-semibold py-3 rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition duration-150 ease-in-out shadow-md"
-      >
-        {loading ? 'Fetching Review...' : 'Get AI Review'}
-      </button>
-
-      {error && (
-        <p className="mt-4 text-red-600 p-3 bg-red-50 border border-red-200 rounded-lg">{error}</p>
-      )}
-
-      {review && (
-        <div className="mt-6 p-4 bg-gray-50 border border-gray-200 rounded-lg whitespace-pre-wrap">
-          <h3 className="text-xl font-semibold mb-2 text-gray-800">Review Result:</h3>
-          {/* Since your backend returns Markdown, you might want to use a Markdown renderer library 
-              (like 'react-markdown') for proper formatting instead of a basic <pre> tag. */}
-          <pre className="text-sm font-mono overflow-x-auto p-2 bg-white rounded">{review}</pre>
+        {/* Input and Button */}
+        <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 mb-6">
+          <input
+            type="text"
+            className={`flex-grow p-3 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none ${inputStyle}`}
+            placeholder="Enter full college name (e.g., IIT Bombay)"
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            onKeyPress={(e) => {
+              if (e.key === 'Enter') {
+                fetchReview();
+              }
+            }}
+            disabled={loading}
+          />
+          <button
+            className={`p-3 rounded-lg font-semibold transition duration-200 shadow-md ${buttonBg} text-white`}
+            onClick={fetchReview}
+            disabled={loading}
+          >
+            {loading ? 'Generating...' : 'Get Review'}
+          </button>
         </div>
-      )}
+
+        {/* Result Area */}
+        <div className={`p-4 rounded-lg min-h-32 mt-4 ${resultBg}`}>
+          {error && <p className="text-red-400 font-medium">{error}</p>}
+          {loading && (
+            <div className="flex items-center space-x-2 text-orange-400">
+              <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <span>Fetching college data from Gemini...</span>
+            </div>
+          )}
+          {review && !loading && (
+            <div 
+                className="text-gray-300 review-output" 
+                // WARNING: dangerouslySetInnerHTML is used here to render Markdown content from the API.
+                // In a real application, ensure the API output is sanitized.
+                dangerouslySetInnerHTML={{ __html: review.replace(/\n/g, '<br>') }} 
+            />
+          )}
+          {!review && !loading && !error && (
+            <p className="text-gray-500">
+                The college review will appear here.
+            </p>
+          )}
+        </div>
+      </div>
     </div>
   );
 };
