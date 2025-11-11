@@ -8,16 +8,15 @@ dotenv.config();
 
 const app = express();
 
-// ✅ CORS setup (works for Chrome, Safari, mobile)
+// ✅ CORS setup (fix for all browsers + production)
 app.use(
   cors({
     origin: [
-      "https://stbg1.vercel.app", // frontend deployed domain
-      "http://localhost:5173",    // for local testing
+      "https://stbg1.vercel.app", // ✅ Your frontend domain
+      "http://localhost:5173",    // ✅ Local dev
     ],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: true,
   })
 );
 
@@ -33,13 +32,10 @@ app.post("/api/gemini-college-review", async (req, res) => {
 
   try {
     const response = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" +
-        process.env.GEMINI_API_KEY,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
       {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contents: [
             {
@@ -70,7 +66,7 @@ app.post("/api/gemini-college-review", async (req, res) => {
   }
 });
 
-// ✅ MongoDB Connection (unchanged)
+// ✅ MongoDB Connection
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => console.log("✅ MongoDB Atlas Connected"))
@@ -79,7 +75,7 @@ mongoose
 // ✅ Routes
 app.use("/api/students", studentRoutes);
 
-// ✅ Root route
+// ✅ Health check route
 app.get("/", (req, res) => {
   res.send("Server working fine ✅");
 });
