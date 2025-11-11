@@ -1,111 +1,85 @@
-// NOTE: This is a conceptual implementation. 
-// You must set up a secure backend endpoint to proxy requests to the Google Gemini API.
-import React, { useState } from 'react';
-// Import or define your spinner/loading icon
-// import { Spinner } from './Spinner'; 
+import express from "express";
+import mongoose from "mongoose";
+import cors from "cors";
+import dotenv from "dotenv";
+import studentRoutes from "./routes/studentRoutes.js";
 
-const CollegeReviewAI = () => {
-    const [searchTerm, setSearchTerm] = useState('');
-    const [response, setResponse] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState(null);
+dotenv.config();
 
-    const predefinedQueryPrefix = 
-        "Act as a college counselor specializing in Indian engineering admissions. Based only on established public knowledge, provide a concise review of the following institution focusing on NIRF ranking, top branches, placement statistics (average CTC), and location advantage. If a college name is ambiguous or invalid, politely guide the user. The college name is: ";
-    
-    const handleSearch = async (e) => {
-        e.preventDefault();
-        if (!searchTerm.trim()) return;
+const app = express();
 
-        setIsLoading(true);
-        setResponse('');
-        setError(null);
-        
-        // --- 1. Construct the prompt for the Gemini Model ---
-        const fullPrompt = predefinedQueryPrefix + searchTerm;
+// ✅ CORS setup (fix for all browsers + production)
+app.use(
+  cors({
+    origin: [
+      "https://stbg1.vercel.app", // ✅ Your frontend domain
+      "http://localhost:5173",    // ✅ Local dev
+    ],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 
-        try {
-            // --- 2. Call your secure backend API endpoint ---
-            // REPLACE THIS URL with your actual backend URL that handles the Gemini API call
-            const apiResponse = await fetch('http://localhost:5001/api/gemini-college-review', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt: fullPrompt }),
-            });
+app.use(express.json());
 
-            if (!apiResponse.ok) {
-                throw new Error(`API returned status ${apiResponse.status}`);
-            }
+// 🧠 Gemini Route — uses fetch (not SDK)
+app.post("/api/gemini-college-review", async (req, res) => {
+  const { prompt } = req.body;
 
-            const data = await apiResponse.json();
-            
-            // --- 3. Display the AI's response ---
-            setResponse(data.text); // Assuming your backend returns { text: "AI generated review..." }
+  if (!prompt || prompt.trim() === "") {
+    return res.status(400).json({ message: "Prompt is required." });
+  }
 
-        } catch (err) {
-            console.error("Gemini API Error:", err);
-            setError("Sorry, I couldn't fetch the review right now. Please try again later or refine your college name.");
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    return (
-        <div className="py-16 px-4 sm:px-6 lg:px-8 bg-neutral-800 border-t border-gray-700">
-            <div className="max-w-3xl mx-auto text-center">
-                <h3 className="text-3xl font-extrabold text-white mb-2">
-                    College Review AI <span className="text-orange-500">Powered by Gemini</span>
-                </h3>
-                <p className="text-gray-400 mb-8">
-                    Get instant, factual reviews on any Indian engineering college's ranking, placements, and top branches.
-                </p>
-
-                {/* Search Input Form */}
-                <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-4">
-                    <input
-                        type="text"
-                        placeholder="e.g., IIT Bombay, HBTU Kanpur, AKTU Lucknow"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="flex-grow bg-neutral-900 border border-gray-700 text-white p-3 rounded-lg focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition duration-200"
-                        required
-                    />
-                    <button
-                        type="submit"
-                        disabled={isLoading}
-                        className="px-8 py-3 bg-orange-600 text-white font-semibold rounded-lg hover:bg-orange-700 transition duration-300 disabled:bg-gray-600 shadow-lg"
-                    >
-                        {isLoading ? 'Searching...' : 'Get Review'}
-                    </button>
-                </form>
-
-                {/* AI Response Area */}
-                <div className="mt-8 p-6 bg-neutral-900 rounded-xl border border-gray-700 text-left min-h-[150px] flex items-center justify-center">
-                    {isLoading && (
-                        <p className="text-orange-500 font-medium animate-pulse">
-                            Processing request...
-                        </p>
-                    )}
-                    {error && (
-                        <p className="text-red-400 font-medium">
-                            {error}
-                        </p>
-                    )}
-                    {response && (
-                        // Use dangerouslySetInnerHTML if you expect rich text (Markdown formatting) from the AI
-                        <div className="text-gray-300 leading-relaxed space-y-3" 
-                             dangerouslySetInnerHTML={{ __html: response }} 
-                        />
-                    )}
-                    {!isLoading && !error && !response && (
-                        <p className="text-gray-500">
-                            Search for a college to see the AI review here.
-                        </p>
-                    )}
-                </div>
-            </div>
-        </div>
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                {
+                  text: `Act as a college counselor for Indian engineering colleges. Provide an objective review in markdown format with sections like Ranking, Courses, Placements, Location. College: ${prompt}`,
+                },
+              ],
+            },
+          ],
+        }),
+      }
     );
-};
 
-export default CollegeReviewAI;
+    const data = await response.json();
+
+    const text =
+      data?.candidates?.[0]?.content?.parts?.[0]?.text ||
+      "Sorry, I couldn't fetch the review right now. Please try again later or refine your college name.";
+
+    res.json({ text });
+  } catch (error) {
+    console.error("❌ Gemini API Error:", error);
+    res.status(500).json({
+      message:
+        "Sorry, I couldn't fetch the review right now. Please try again later or refine your college name.",
+    });
+  }
+});
+
+// ✅ MongoDB Connection
+mongoose
+  .connect(process.env.MONGO_URI)
+  .then(() => console.log("✅ MongoDB Atlas Connected"))
+  .catch((err) => console.error("❌ MongoDB Error:", err));
+
+// ✅ Routes
+app.use("/api/students", studentRoutes);
+
+// ✅ Health check route
+app.get("/", (req, res) => {
+  res.send("Server working fine ✅");
+});
+
+// ✅ Start server
+const PORT = process.env.PORT || 5001;
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
