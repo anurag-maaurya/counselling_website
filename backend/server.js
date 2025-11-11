@@ -3,31 +3,29 @@ import mongoose from "mongoose";
 import cors from "cors";
 import dotenv from "dotenv";
 import studentRoutes from "./routes/studentRoutes.js";
-import fetch from "node-fetch"; // ✅ explicitly import for server-side reliability
 
 dotenv.config();
 const app = express();
 
-// ✅ Global middleware
 app.use(express.json());
 
-// ✅ CORS (compatible with all browsers + mobile)
+// ✅ CORS — no change (works for all browsers)
 app.use(
   cors({
     origin: [
-      "https://stbg1.vercel.app", // your frontend
-      "http://localhost:5173", // local dev
+      "https://stbg1.vercel.app", // frontend deployed
+      "http://localhost:5173",    // local dev
     ],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
-// 🧠 Gemini Route (fixed)
+// 🧠 Gemini Route — minimal, safe update
 app.post("/api/gemini-college-review", async (req, res) => {
   const { prompt } = req.body;
 
-  if (!prompt || !prompt.trim()) {
+  if (!prompt || prompt.trim() === "") {
     return res.status(400).json({ message: "Prompt is required." });
   }
 
@@ -38,20 +36,15 @@ app.post("/api/gemini-college-review", async (req, res) => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Accept: "application/json",
-        "User-Agent": "counselling-app/1.0", // ✅ important for Safari & mobile
+        Accept: "application/json", // ✅ helps Safari
       },
       body: JSON.stringify({
         contents: [
           {
             parts: [
               {
-                text: `Act as a college counselor for Indian engineering colleges. 
-Provide a short and objective review with these sections:
-- Ranking
-- Courses
-- Placements
-- Location
+                text: `Act as a college counselor for Indian engineering colleges.
+Provide an objective and helpful review in markdown format with sections like Ranking, Courses, Placements, and Location.
 College: ${prompt}`,
               },
             ],
@@ -62,15 +55,16 @@ College: ${prompt}`,
 
     const data = await response.json();
 
-    if (!response.ok) {
-      console.error("Gemini API Error:", data);
+    // ✅ Defensive check for invalid Gemini response
+    if (!response.ok || !data?.candidates) {
+      console.error("Gemini API error:", data);
       return res.status(500).json({
-        message: "Gemini API returned an error. Try again later.",
+        message: "Gemini API error — please try again later.",
       });
     }
 
     const text =
-      data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ||
+      data.candidates?.[0]?.content?.parts?.[0]?.text ||
       "Sorry, I couldn't fetch the review right now. Please try again later or refine your college name.";
 
     res.json({ text });
@@ -83,18 +77,20 @@ College: ${prompt}`,
   }
 });
 
-// ✅ MongoDB (no change)
+// ✅ MongoDB Connection — SAME as before
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => console.log("✅ MongoDB Atlas Connected"))
   .catch((err) => console.error("❌ MongoDB Error:", err));
 
-// ✅ Routes
+// ✅ Student Routes — SAME
 app.use("/api/students", studentRoutes);
 
-// ✅ Health check
-app.get("/", (req, res) => res.send("Server working fine ✅"));
+// ✅ Root route — SAME
+app.get("/", (req, res) => {
+  res.send("Server working fine ✅");
+});
 
-// ✅ Server start
+// ✅ Start server — SAME
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
