@@ -1,60 +1,57 @@
-import express from "express";
-import mongoose from "mongoose";
 import cors from "cors";
+import express from "express";
 import dotenv from "dotenv";
-import { GoogleGenerativeAI } from "@google/generative-ai"; // ✅ Correct import
+import mongoose from "mongoose";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import studentRoutes from "./routes/studentRoutes.js";
 import aiRoutes from "./routes/aiRoutes.js";
 
 dotenv.config();
-
 const app = express();
+
 app.use(express.json());
 
-// ✅ Initialize Gemini client (use correct class name)
-const ai = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+// ✅ VERY IMPORTANT — this must be before any routes
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*"); // ✅ for all domains (temporary)
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(200);
+  }
+  next();
+});
 
-// ✅ CORS setup
+// ✅ OR if you want stricter CORS for your frontend only:
 app.use(
   cors({
     origin: [
-      "https://stbg1.vercel.app", // ✅ Deployed frontend
-      "http://localhost:5174",    // ✅ Local frontend
+      "https://stbg1.vercel.app",
+      "http://localhost:5174",
     ],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
   })
 );
 
-// ✅ Gemini AI Route
+// ✅ Gemini AI route (keep this same)
+const ai = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
 app.post("/api/gemini-college-review", async (req, res) => {
   const { prompt } = req.body;
-
-  if (!prompt || prompt.trim() === "") {
-    return res.status(400).json({ message: "Prompt is required." });
-  }
+  if (!prompt) return res.status(400).json({ message: "Prompt is required." });
 
   try {
     const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
-
-    const systemInstruction =
-      "Act as a professional college counselor for Indian colleges. Provide objective markdown format reviews with sections like Ranking, Courses, Placements, and Location.";
-
     const result = await model.generateContent([
-      { text: `${systemInstruction}\n\nCollege: ${prompt}` },
+      { text: `Give college review for: ${prompt}` },
     ]);
-
-    const text =
-      result?.response?.text() ||
-      "Sorry, I couldn't fetch the review right now. Please try again later.";
-
+    const text = result.response.text();
     res.json({ text });
-  } catch (error) {
-    console.error("❌ Gemini API Error:", error);
-    res.status(500).json({
-      message:
-        "Server error while fetching college review. Please check API key or logs.",
-    });
+  } catch (err) {
+    console.error("AI error:", err);
+    res.status(500).json({ message: "AI error" });
   }
 });
 
@@ -64,13 +61,10 @@ mongoose
   .then(() => console.log("✅ MongoDB Connected"))
   .catch((err) => console.error("❌ MongoDB Error:", err));
 
-// ✅ Other routes
 app.use("/api/students", studentRoutes);
 app.use("/api", aiRoutes);
 
-// ✅ Health check
 app.get("/", (req, res) => res.send("Server running fine ✅"));
 
-// ✅ Start server
 const PORT = process.env.PORT || 5001;
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Server on port ${PORT}`));
