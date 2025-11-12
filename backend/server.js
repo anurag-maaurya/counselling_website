@@ -5,6 +5,10 @@ import dotenv from "dotenv";
 import { GoogleGenAI } from "@google/genai"; // ✅ NEW: Import the Google GenAI SDK
 import studentRoutes from "./routes/studentRoutes.js";
 
+import aiRoutes from "./routes/aiRoutes.js";
+app.use("/api", aiRoutes);
+
+
 dotenv.config();
 
 const app = express();
