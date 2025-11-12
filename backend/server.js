@@ -2,36 +2,31 @@ import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
 import dotenv from "dotenv";
-import { GoogleGenAI } from "@google/genai"; // ✅ NEW: Import the Google GenAI SDK
+import { GoogleGenerativeAI } from "@google/generative-ai"; // ✅ Correct import
 import studentRoutes from "./routes/studentRoutes.js";
-
 import aiRoutes from "./routes/aiRoutes.js";
-app.use("/api", aiRoutes);
-
 
 dotenv.config();
 
 const app = express();
+app.use(express.json());
 
-// ✅ Initialize the Gemini Client with the API Key
-// This should be done once outside the route handler
-const ai = new GoogleGenAI(process.env.GEMINI_API_KEY); 
+// ✅ Initialize Gemini client (use correct class name)
+const ai = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-// ✅ CORS setup (fix for all browsers + production)
+// ✅ CORS setup
 app.use(
   cors({
     origin: [
-      "https://stbg1.vercel.app", // ✅ Your frontend domain
-      "http://localhost:5173",    // ✅ Local dev
+      "https://stbg1.vercel.app", // ✅ Deployed frontend
+      "http://localhost:5174",    // ✅ Local frontend
     ],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
-app.use(express.json());
-
-// 🧠 Gemini Route — UPDATED to use Node.js SDK for reliability
+// ✅ Gemini AI Route
 app.post("/api/gemini-college-review", async (req, res) => {
   const { prompt } = req.body;
 
@@ -40,54 +35,41 @@ app.post("/api/gemini-college-review", async (req, res) => {
   }
 
   try {
-    // Define the system instruction separately for better control
-    const systemInstruction = "Act as a college counselor for Indian engineering colleges. Provide an objective review in markdown format with sections like Ranking, Courses, Placements, Location.";
-    
-    // 💡 Use the SDK's generateContent method
-    const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash", // Using the model you specified
-      contents: [
-        {
-          role: "user",
-          parts: [{ text: `College: ${prompt}` }], // The user's query
-        },
-      ],
-      config: {
-        systemInstruction: systemInstruction,
-        // Using Google Search grounding tool to ensure factual results
-        tools: [{ "google_search": {} }], 
-      }
-    });
+    const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-    // Extract the text safely from the SDK response
-    const text = 
-      response?.text || 
-      "Sorry, I couldn't fetch the review right now. The API might be facing an issue. Please try again later or refine your college name.";
+    const systemInstruction =
+      "Act as a professional college counselor for Indian colleges. Provide objective markdown format reviews with sections like Ranking, Courses, Placements, and Location.";
+
+    const result = await model.generateContent([
+      { text: `${systemInstruction}\n\nCollege: ${prompt}` },
+    ]);
+
+    const text =
+      result?.response?.text() ||
+      "Sorry, I couldn't fetch the review right now. Please try again later.";
 
     res.json({ text });
   } catch (error) {
-    // Log the error for server-side debugging
-    console.error("❌ Gemini API Error (Using SDK):", error); 
+    console.error("❌ Gemini API Error:", error);
     res.status(500).json({
       message:
-        "An unexpected server error occurred while fetching the review. Please check your API key and server logs.",
+        "Server error while fetching college review. Please check API key or logs.",
     });
   }
 });
 
-// ✅ MongoDB Connection
+// ✅ MongoDB connection
 mongoose
   .connect(process.env.MONGO_URI)
-  .then(() => console.log("✅ MongoDB Atlas Connected"))
+  .then(() => console.log("✅ MongoDB Connected"))
   .catch((err) => console.error("❌ MongoDB Error:", err));
 
-// ✅ Routes
+// ✅ Other routes
 app.use("/api/students", studentRoutes);
+app.use("/api", aiRoutes);
 
-// ✅ Health check route
-app.get("/", (req, res) => {
-  res.send("Server working fine ✅");
-});
+// ✅ Health check
+app.get("/", (req, res) => res.send("Server running fine ✅"));
 
 // ✅ Start server
 const PORT = process.env.PORT || 5001;
