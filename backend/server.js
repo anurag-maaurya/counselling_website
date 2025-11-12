@@ -21,7 +21,7 @@ app.use(
   })
 );
 
-app.use('/api/gemini', require('./routes/geminiRoutes'));
+
 
 // ✅ Connect MongoDB Atlas
 mongoose
