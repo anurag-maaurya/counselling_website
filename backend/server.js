@@ -1,47 +1,40 @@
 import express from "express";
+import mongoose from "mongoose";
 import cors from "cors";
 import dotenv from "dotenv";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import studentRoutes from "./routes/studentRoutes.js";
 
 dotenv.config();
+
 const app = express();
 
+// ✅ Middleware
 app.use(express.json());
-
-// ✅ CORS fix (production + local)
 app.use(
   cors({
-    origin: ["https://stbg1.vercel.app", "http://localhost:5174"],
-    methods: ["GET", "POST", "OPTIONS"],
+    origin: [
+      "https://stbg1.vercel.app", // ✅ Your frontend (Vercel)
+      "http://localhost:5173",    // ✅ Local dev
+    ],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
-// ✅ Manual headers (Vercel safety net)
-app.use((req, res, next) => {
-    res.setHeader("Access-Control-Allow-Origin", "https://stbg1.vercel.app");
-    res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization");
-    if (req.method === "OPTIONS") return res.sendStatus(200);
-    next();
+// ✅ Connect MongoDB Atlas
+mongoose
+  .connect(process.env.MONGO_URI)
+  .then(() => console.log("✅ MongoDB Atlas Connected"))
+  .catch((err) => console.error("❌ MongoDB Connection Error:", err));
+
+// ✅ Routes
+app.use("/api/students", studentRoutes);
+
+// ✅ Health check route
+app.get("/", (req, res) => {
+  res.send("🚀 Backend server running successfully!");
 });
 
-// ✅ Gemini route
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-app.post("/api/college-review", async (req, res) => {
-  try {
-    const { prompt } = req.body;
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-    const result = await model.generateContent([
-      { role: "user", parts: [{ text: `Give college review: ${prompt}` }] },
-    ]);
-    res.json({ text: result.response.text() });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ message: "AI error" });
-  }
-});
-
-app.get("/", (req, res) => res.send("✅ Server Working"));
-
-export default app;
+// ✅ Start server
+const PORT = process.env.PORT || 5001;
+app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
