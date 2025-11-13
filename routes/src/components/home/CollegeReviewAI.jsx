@@ -7,59 +7,60 @@ const CollegeReviewAI = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!college.trim()) return;
-
     setLoading(true);
     setReview("");
 
     try {
-      const res = await fetch("https://your-backend-url.onrender.com/api/gemini-college-review", {
+      const response = await fetch("https:///api/gemini-college-review", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ college }),
       });
-
-      const data = await res.json();
-      setReview(data.review || "No review found. Try again with full college name.");
+      const data = await response.json();
+      setReview(data.review || "Sorry, no review found. Try again.");
     } catch (error) {
-      setReview("⚠️ Sorry, something went wrong. Please try again later.");
+      console.error("Error fetching review:", error);
+      setReview("Error fetching review. Please try again later.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center px-4">
-      <h1 className="text-3xl sm:text-4xl font-bold mb-2 text-center">
-        College Review AI <span className="text-orange-500">Powered by Gemini</span>
-      </h1>
-      <p className="text-gray-400 mb-6 text-center max-w-2xl">
-        Get instant, factual reviews on any Indian engineering college’s ranking, placements, and top branches.
-      </p>
+    <div className="mt-16 bg-black rounded-2xl p-8 shadow-lg border border-gray-800">
+      <div className="text-center mb-6">
+        <h2 className="text-3xl font-bold text-white">
+          College Review AI{" "}
+          <span className="text-orange-500">Powered by Gemini</span>
+        </h2>
+        <p className="text-gray-400 mt-2">
+          Get instant factual reviews of any Indian engineering college.
+        </p>
+      </div>
 
       <form
         onSubmit={handleSubmit}
-        className="flex flex-col sm:flex-row w-full sm:w-auto gap-3 justify-center items-center mb-8"
+        className="flex flex-col md:flex-row items-center gap-3 justify-center"
       >
         <input
           type="text"
-          placeholder="Enter college name (e.g., IET Lucknow)"
           value={college}
           onChange={(e) => setCollege(e.target.value)}
-          className="px-4 py-3 w-72 sm:w-96 bg-gray-800 border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+          placeholder="Enter college name (e.g. IET Lucknow)"
+          className="flex-1 bg-gray-900 border border-gray-700 rounded-xl p-3 text-white w-full md:w-2/3 focus:outline-none focus:ring-2 focus:ring-orange-500"
         />
         <button
           type="submit"
           disabled={loading}
-          className="px-6 py-3 bg-orange-600 hover:bg-orange-700 rounded-md font-semibold transition"
+          className="bg-orange-600 hover:bg-orange-700 px-6 py-3 rounded-xl font-semibold transition-all"
         >
-          {loading ? "Fetching..." : "Get Review"}
+          {loading ? "Loading..." : "Get Review"}
         </button>
       </form>
 
       {review && (
-        <div className="bg-gray-800 border border-gray-700 p-6 rounded-lg max-w-3xl text-gray-200 shadow-md">
-          <p className="whitespace-pre-line leading-relaxed">{review}</p>
+        <div className="mt-6 p-4 bg-gray-900 border border-gray-700 rounded-xl text-gray-300 text-left whitespace-pre-line transition-all duration-300">
+          {review}
         </div>
       )}
     </div>
