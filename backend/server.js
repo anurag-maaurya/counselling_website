@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 import cors from "cors";
 import dotenv from "dotenv";
 import studentRoutes from "./routes/studentRoutes.js";
-
+import aiRoutes from "./routes/aiRoutes.js"; // ✅ Add this line
 dotenv.config();
 
 const app = express();
@@ -21,7 +21,7 @@ app.use(
   })
 );
 
-
+app.use("/api/ai", aiRoutes);
 
 // ✅ Connect MongoDB Atlas
 mongoose
