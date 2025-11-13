@@ -2,49 +2,39 @@ import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
 import dotenv from "dotenv";
-import path from "path";
-import { fileURLToPath } from "url";
 import studentRoutes from "./routes/studentRoutes.js";
-import aiRoutes from "./routes/aiRoutes.js";
 
 dotenv.config();
-const app = express();
 
-// ✅ Serve frontend build files (for Vercel combined deploy)
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-app.use(express.static(path.join(__dirname, "frontend/dist")));
+const app = express();
 
 // ✅ Middleware
 app.use(express.json());
-
-// ✅ Simple CORS (allow same domain & local dev)
 app.use(
   cors({
-    origin: ["http://localhost:5173", "*"],
+    origin: [
+      "https://stbg1.vercel.app", // frontend (Vercel)
+      "http://localhost:5173",    // local dev
+    ],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
-// ✅ Routes
-app.use("/api/ai", aiRoutes);
-app.use("/api/students", studentRoutes);
-
-// ✅ MongoDB
+// ✅ MongoDB Connection
 mongoose
   .connect(process.env.MONGO_URI)
-  .then(() => console.log("✅ MongoDB Atlas Connected"))
+  .then(() => console.log("✅ MongoDB Connected Successfully"))
   .catch((err) => console.error("❌ MongoDB Connection Error:", err));
 
-// ✅ Health check
-app.get("/api", (req, res) => res.send("🚀 API Running Successfully!"));
+// ✅ Routes
+app.use("/api/students", studentRoutes);
 
-// ✅ Fallback: all other routes → frontend
-app.get("*", (req, res) => {
-  res.sendFile(path.resolve(__dirname, "frontend", "dist", "index.html"));
+// ✅ Health check
+app.get("/", (req, res) => {
+  res.send("🚀 Backend is running fine without AI!");
 });
 
-// ✅ Local dev only
+// ✅ Server
 const PORT = process.env.PORT || 5001;
-app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`✅ Server started on port ${PORT}`));
