@@ -26,12 +26,20 @@ const cutoffData = [
   // --- CSAB/Special Round Examples ---
   { college: "NIT Agartala", branch: "Civil", category: "General", closingRank: 75000, counseling: "CSAB" },
   { college: "NIT Srinagar", branch: "EE", category: "OBC", closingRank: 95000, counseling: "CSAB" },
+
+  // --- Private / Self-Financed Colleges (Fallback for low marks) ---
+  { college: "Galgotias University", branch: "CSE", category: "General", closingRank: 250000, counseling: "UPTU" },
+  { college: "GLA University, Mathura", branch: "CSE", category: "General", closingRank: 260000, counseling: "UPTU" },
+  { college: "United College of Engineering, Prayagraj", branch: "CSE", category: "General", closingRank: 270000, counseling: "UPTU" },
+  { college: "ABES Engineering College, Ghaziabad", branch: "IT", category: "General", closingRank: 240000, counseling: "UPTU" },
+  { college: "KIET Ghaziabad", branch: "ECE", category: "General", closingRank: 230000, counseling: "UPTU" },
+  { college: "IMS Engineering College, Ghaziabad", branch: "CSE", category: "General", closingRank: 275000, counseling: "UPTU" },
+  { college: "SRM University, Delhi NCR", branch: "CSE", category: "General", closingRank: 290000, counseling: "UPTU" },
 ];
 
 const counselingOptions = ["UPTU", "JOSAA", "REAP", "CSAB"];
 const categoryOptions = ["General", "OBC", "SC", "ST", "EWS"];
 const branchOptions = ["CSE", "IT", "ECE", "Mechanical", "Chemical", "Civil", "Electrical", "EE"];
-
 
 export default function RankPredictor() {
   const [selectedCounseling, setSelectedCounseling] = useState("");
@@ -42,16 +50,15 @@ export default function RankPredictor() {
   const [eligibleColleges, setEligibleColleges] = useState([]);
   const [error, setError] = useState("");
 
-  // Helper function to simulate a realistic rank based on marks
+  // --- Rank Simulation ---
   const getSimulatedRank = (marks) => {
-    // Logic from previous iteration
-    if (marks >= 250) return Math.floor(Math.random() * (15000 - 8000) + 8000); 
-    if (marks >= 200) return Math.floor(Math.random() * (30000 - 15000) + 15000); 
+    if (marks >= 250) return Math.floor(Math.random() * (15000 - 8000) + 8000);
+    if (marks >= 200) return Math.floor(Math.random() * (30000 - 15000) + 15000);
     if (marks >= 150) return Math.floor(Math.random() * (60000 - 30000) + 30000);
     if (marks >= 100) return Math.floor(Math.random() * (120000 - 60000) + 60000);
-    return Math.floor(Math.random() * (250000 - 120000) + 120000);
+    if (marks >= 50) return Math.floor(Math.random() * (180000 - 120000) + 120000);
+    return Math.floor(Math.random() * (250000 - 180000) + 180000);
   };
-
 
   const handlePredict = (e) => {
     e.preventDefault();
@@ -67,42 +74,45 @@ export default function RankPredictor() {
     const rank = getSimulatedRank(parseInt(marks));
     setPredictedRank(rank);
 
-    // --- College Eligibility Filtering (Multi-Factor) ---
     const eligible = cutoffData.filter((c) => {
       const isCounselingMatch = c.counseling === selectedCounseling;
       const isCategoryMatch = c.category === category;
       const isBranchMatch = c.branch === branch;
 
-      // Add a buffer for prediction leniency
-      const buffer = Math.min(5000, rank * 0.1); 
+      const buffer = Math.min(5000, rank * 0.1);
       const isInRankRange = rank <= c.closingRank + buffer;
 
       return isCounselingMatch && isCategoryMatch && isBranchMatch && isInRankRange;
     });
 
-    eligible.sort((a, b) => a.closingRank - b.closingRank);
-
-    setEligibleColleges(eligible);
+    // --- Fallback if no college found ---
+    if (eligible.length === 0) {
+      const fallbackPrivate = cutoffData.filter(
+        (c) =>
+          ["Galgotias University", "United College of Engineering, Prayagraj", "ABES Engineering College, Ghaziabad", "KIET Ghaziabad", "GLA University, Mathura", "SRM University, Delhi NCR"].includes(c.college) &&
+          c.branch === branch
+      );
+      setEligibleColleges(fallbackPrivate.slice(0, 5));
+    } else {
+      eligible.sort((a, b) => a.closingRank - b.closingRank);
+      setEligibleColleges(eligible);
+    }
   };
 
   return (
     <div className="min-h-screen bg-neutral-900 py-16 px-4 flex items-center justify-center">
       <div className="bg-neutral-800 shadow-2xl shadow-black/50 rounded-3xl p-8 lg:p-12 w-full max-w-5xl border border-gray-700">
-        
-        {/* --- STYLIZED HEADING --- */}
         <hgroup className="text-center mb-12">
-            <h1 className="text-5xl lg:text-6xl font-extrabold text-white mb-2">
-                <span className="text-orange-500">College</span> & Rank Predictor
-            </h1>
-            <p className="text-xl text-gray-400 font-medium max-w-2xl mx-auto">
-                Discover your best admission possibilities across India based on your JEE Score.
-            </p>
+          <h1 className="text-5xl lg:text-6xl font-extrabold text-white mb-2">
+            <span className="text-orange-500">College</span> & Rank Predictor
+          </h1>
+          <p className="text-xl text-gray-400 font-medium max-w-2xl mx-auto">
+            Discover your best admission possibilities across India based on your JEE Score.
+          </p>
         </hgroup>
 
         <form onSubmit={handlePredict} className="space-y-8">
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            
-            {/* Input Fields */}
             {[
               { label: "Counseling Type *", state: selectedCounseling, setter: setSelectedCounseling, options: counselingOptions, placeholder: "-- Select Counseling --" },
               { label: "Category *", state: category, setter: setCategory, options: categoryOptions, placeholder: "-- Select Category --" },
@@ -126,7 +136,6 @@ export default function RankPredictor() {
               </div>
             ))}
 
-            {/* Marks Input (Separate for different style) */}
             <div>
               <label className="block text-sm font-semibold text-gray-300 mb-2">
                 Enter Marks (e.g., JEE Score) *
@@ -142,7 +151,7 @@ export default function RankPredictor() {
               />
             </div>
           </div>
-          
+
           {error && <p className="text-red-400 text-center font-medium">{error}</p>}
 
           <button
@@ -153,18 +162,14 @@ export default function RankPredictor() {
           </button>
         </form>
 
-        {/* --- Prediction Results --- */}
         {predictedRank !== null && (
           <div className="mt-12 bg-neutral-900 p-8 rounded-2xl border border-orange-500/50 shadow-inner shadow-black/40">
-            
-            {/* RANK DISPLAY - MADE MORE VISIBLE */}
             <div className="text-center mb-6">
-                <p className="text-xl font-semibold text-gray-300">Your Predicted Rank is:</p>
-                <h2 className="text-6xl font-black text-white mt-1 mb-4">
-                    <span className="text-orange-500 drop-shadow-lg">{predictedRank}</span>
-                </h2>
+              <p className="text-xl font-semibold text-gray-300">Your Predicted Rank is:</p>
+              <h2 className="text-6xl font-black text-white mt-1 mb-4">
+                <span className="text-orange-500 drop-shadow-lg">{predictedRank}</span>
+              </h2>
             </div>
-
 
             {eligibleColleges.length > 0 ? (
               <div>
@@ -188,14 +193,12 @@ export default function RankPredictor() {
                   ))}
                 </ul>
                 <p className="mt-8 text-orange-400 text-center font-medium text-sm">
-                    *Disclaimer: This is a demo prediction based on fictional cutoff data. Actual admissions require expert guidance.
+                  *Disclaimer: This is a demo prediction based on fictional cutoff data. Actual admissions require expert guidance.
                 </p>
               </div>
             ) : (
               <p className="text-gray-400 mt-3 text-center text-xl">
-                ❌ Sorry, no exact matches found in our current data set. This indicates a high rank.
-                <br/>
-                **Book a Premium Session** for personalized strategic college filling!
+                ❌ No results found. Please check your details.
               </p>
             )}
           </div>
