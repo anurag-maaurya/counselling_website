@@ -1,47 +1,69 @@
 import React, { useState } from "react";
 
-export default function CollegeReview({ collegeName }) {
+const CollegeReviewAI = () => {
+  const [college, setCollege] = useState("");
   const [review, setReview] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleGetReview = async () => {
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!college.trim()) return;
+
     setLoading(true);
     setReview("");
 
     try {
-      // ✅ Now using relative API URL (works automatically on same domain)
-      const res = await fetch("/api/ai/review", {
+      const res = await fetch("https://your-backend-url.onrender.com/api/gemini-college-review", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt: `Give a detailed, student-friendly review for the college named ${collegeName}. Include academics, placements, campus life, and faculty.`,
-        }),
+        body: JSON.stringify({ college }),
       });
 
       const data = await res.json();
-      setReview(data.review || "No review available right now.");
-    } catch (err) {
-      console.error(err);
-      setReview("Error fetching AI review. Please try again later.");
+      setReview(data.review || "No review found. Try again with full college name.");
+    } catch (error) {
+      setReview("⚠️ Sorry, something went wrong. Please try again later.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="p-4 rounded-xl shadow-md bg-white">
-      <h3 className="text-lg font-semibold mb-2">AI College Review</h3>
+    <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center px-4">
+      <h1 className="text-3xl sm:text-4xl font-bold mb-2 text-center">
+        College Review AI <span className="text-orange-500">Powered by Gemini</span>
+      </h1>
+      <p className="text-gray-400 mb-6 text-center max-w-2xl">
+        Get instant, factual reviews on any Indian engineering college’s ranking, placements, and top branches.
+      </p>
 
-      <button
-        onClick={handleGetReview}
-        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+      <form
+        onSubmit={handleSubmit}
+        className="flex flex-col sm:flex-row w-full sm:w-auto gap-3 justify-center items-center mb-8"
       >
-        {loading ? "Generating..." : "Get AI Review"}
-      </button>
+        <input
+          type="text"
+          placeholder="Enter college name (e.g., IET Lucknow)"
+          value={college}
+          onChange={(e) => setCollege(e.target.value)}
+          className="px-4 py-3 w-72 sm:w-96 bg-gray-800 border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+        />
+        <button
+          type="submit"
+          disabled={loading}
+          className="px-6 py-3 bg-orange-600 hover:bg-orange-700 rounded-md font-semibold transition"
+        >
+          {loading ? "Fetching..." : "Get Review"}
+        </button>
+      </form>
 
       {review && (
-        <p className="mt-4 whitespace-pre-line text-gray-800">{review}</p>
+        <div className="bg-gray-800 border border-gray-700 p-6 rounded-lg max-w-3xl text-gray-200 shadow-md">
+          <p className="whitespace-pre-line leading-relaxed">{review}</p>
+        </div>
       )}
     </div>
   );
-}
+};
+
+export default CollegeReviewAI;
