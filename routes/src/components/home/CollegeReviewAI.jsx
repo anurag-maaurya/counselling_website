@@ -1,58 +1,49 @@
 import React, { useState } from "react";
 
-const CollegeReviewAI = () => {
-  const [college, setCollege] = useState("");
+export default function CollegeReview({ collegeName }) {
   const [review, setReview] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleSearch = async () => {
-    if (!college) return alert("Enter a college name");
-
+  const handleGetReview = async () => {
     setLoading(true);
     setReview("");
 
     try {
-      const response = await fetch("https://counselling-website-backend.vercel.app/api/college-review", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: college }),
-      });
+      const res = await fetch(
+        "https://counselling-website-backend.vercel.app/api/ai/review",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            prompt: `Give a detailed, student-friendly review for the college named ${collegeName}. Include academics, placements, campus life, and faculty.`,
+          }),
+        }
+      );
 
-      const data = await response.json();
-      setReview(data.review || "Sorry, no details found.");
+      const data = await res.json();
+      setReview(data.review || "No review available right now.");
     } catch (err) {
-      console.error("AI fetch error:", err);
-      setReview("Error fetching data. Please try again.");
+      console.error(err);
+      setReview("Error fetching AI review. Please try again later.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="bg-black min-h-screen text-white flex flex-col items-center justify-center">
-      <h1 className="text-3xl font-bold text-orange-500 mb-4">AI College Review</h1>
-      <div className="bg-white/10 p-6 rounded-2xl shadow-lg w-96">
-        <input
-          type="text"
-          placeholder="Enter college name..."
-          className="w-full p-3 rounded-lg bg-black text-white border border-orange-500 focus:outline-none"
-          value={college}
-          onChange={(e) => setCollege(e.target.value)}
-        />
-        <button
-          onClick={handleSearch}
-          className="mt-4 w-full bg-orange-500 text-black font-semibold py-2 rounded-lg hover:bg-orange-600"
-        >
-          {loading ? "Loading..." : "Get Review"}
-        </button>
-        {review && (
-          <div className="mt-4 p-3 bg-white/10 rounded-lg text-sm">
-            <p>{review}</p>
-          </div>
-        )}
-      </div>
+    <div className="p-4 rounded-xl shadow-md bg-white">
+      <h3 className="text-lg font-semibold mb-2">AI College Review</h3>
+
+      <button
+        onClick={handleGetReview}
+        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+      >
+        {loading ? "Generating..." : "Get AI Review"}
+      </button>
+
+      {review && (
+        <p className="mt-4 whitespace-pre-line text-gray-800">{review}</p>
+      )}
     </div>
   );
-};
-
-export default CollegeReviewAI;
+}
