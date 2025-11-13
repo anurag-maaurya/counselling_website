@@ -1,7 +1,7 @@
 import React from 'react';
 // *** CORE IMPORTS ***
 // Ensure these paths are correct for your project structure
-import CollegeReviewAI from './CollegeReviewAI'; 
+
 import RankPredictor from './RankPredictor'; 
 
 // Helper component for Testimonial Cards (unchanged)
@@ -151,9 +151,7 @@ const Homepage = () => {
 
             {/* 3. --- College Review AI Section --- */}
             {/* The ID allows the Hero button to scroll directly here */}
-            <div id="ai-review-section">
-                <CollegeReviewAI /> 
-            </div>
+         
 
 
             {/* 4. --- How It Works Section (Program Benefits) --- */}
