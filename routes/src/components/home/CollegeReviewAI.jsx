@@ -9,16 +9,14 @@ export default function CollegeReview({ collegeName }) {
     setReview("");
 
     try {
-      const res = await fetch(
-        "https://counselling-website-backend.vercel.app/api/ai/review",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            prompt: `Give a detailed, student-friendly review for the college named ${collegeName}. Include academics, placements, campus life, and faculty.`,
-          }),
-        }
-      );
+      // ✅ Now using relative API URL (works automatically on same domain)
+      const res = await fetch("/api/ai/review", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: `Give a detailed, student-friendly review for the college named ${collegeName}. Include academics, placements, campus life, and faculty.`,
+        }),
+      });
 
       const data = await res.json();
       setReview(data.review || "No review available right now.");
