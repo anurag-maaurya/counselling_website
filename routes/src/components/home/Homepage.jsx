@@ -1,4 +1,7 @@
 import React from 'react';
+import CollegeReviewAI from "./CollegeReviewAI";
+
+
 // *** CORE IMPORTS ***
 // Ensure these paths are correct for your project structure
 
@@ -252,5 +255,7 @@ const Homepage = () => {
         </div>
     );
 }
+
+<Route path="/college-review" element={<CollegeReviewAI />} />
 
 export default Homepage;
